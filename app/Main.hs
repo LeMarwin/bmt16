@@ -4,11 +4,17 @@ module Main where
 
 import Lib
 import Misc
-import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra as NA
 import Data.Foldable
 import Data.Maybe
 import Data.Default.Class
+import Numeric.GSL.Minimization
 import Optimise
+import Data.Packed.Repa
+import Data.Array.Repa (computeUnboxedP)
+import Data.Array.Repa.IO.BMP
+import Data.Word
+import qualified Data.Array.Repa.Operators.Mapping as RM
 
 printMas :: Show a => [a] -> IO ()
 printMas [] = return ()
@@ -44,33 +50,25 @@ main = do
   let lc = linComb dr [1..]
   let c = zipMatrixWith (+) (matrix 3 [1.0..9.0]) (matrix 3 [1.0..9.0])
 
+  let Right r' = r
+  let Right i = i_orig
+  let a0 = [0,0,0,0,0]
 
-  let p = [[0,0],[1.2,0],[0.0,0.8]]
-  let s = Simplex p foo [] 1 0.5 2 (10**(-10)) (([],0),([],0),([],0)) []
-  let res = validate 100 $ initSimplex s
-  print $ best res
---  let Right i = i_orig
---  let Right r' = r
---  fminsearch def (costAbs dr r' i) [0,0,0,0,0] >>= print
-  
-  
-  print $ sqp [0]
+  let (s,p) = minimize NMSimplex2 1E-2 50 ((\_ -> 10) <$> a0) (costAbs dr r' i) a0
+  q <- computeUnboxedP $ RM.map dtg $ matrixToRepa i
+  print "ready to write"
+  writeImageToBMP "data/img.bmp" $ q
 
-foo :: [Double] -> Double
-foo xs@(x:y:[]) = 10 - x**2 - 4*x + y**2 - y - x*y
+dtg :: Double -> (Word8,Word8,Word8)
+dtg d = (w,w,w)
+  where w = fromInteger $ round $ d * 255
 
-linComb :: [Matrix Double] -> [Double] -> Matrix Double
-linComb d alpha = foldl (+) (scalar 0) $ zipWith (*) alpha' d
-  where alpha' = scalar <$> alpha
-
-costFunct :: (Double -> Double -> Double)   --calc_cost. e.g. abs diff, square etc
-            -> [Matrix Double]              --Array of diff images
-            -> Matrix Double                --Residual image
-            -> Matrix Double                --Original image
-            -> [Double]                     --Alpha
-            -> Double                       --cost
-costFunct f d r o a = (dot) (vector [1.0,1.0..]) $ flatten $ zipMatrixWith f o $ linComb d a + r
-
-costAbs = costFunct (\a b -> abs (a - b))
-costSqr = costFunct (\a b -> (a - b)**2)
-costZeroes = costFunct (\a b -> if a == b then 0 else 1)
+costFunc :: [Matrix Double]     --Array of diff images
+            -> Matrix Double    --Residual image
+            -> Matrix Double    --Original image
+            -> [Double]         --Alpha
+            -> Double           --cost
+costAbs :: [Matrix Double] -> Matrix Double -> Matrix Double -> [Double] -> Double
+costAbs d r o a = sum $ NA.toList $ flatten $ cmap (abs) $ o - ad + r 
+  where
+    ad = foldl (+) (scalar 0.0) $ zipWith (\a d -> scalar a * d) a d

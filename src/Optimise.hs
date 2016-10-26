@@ -11,27 +11,27 @@ import Debug.Trace
 type Point = [Double]
 type GBU = ((Point,Double),(Point,Double),(Point,Double))
 
---| Scalar to point multiplication; Non-commutative
+-- | Scalar to point multiplication; Non-commutative
 spm :: Double -> Point -> Point
 spm s p = (s*) <$> p
 
---| Point by scalar division; Handy for computing central point
+-- | Point by scalar division; Handy for computing central point
 psd :: Point -> Double -> Point
 psd p s = (\e -> e / s) <$> p
 
---| Point-point summation
+-- | Point-point summation
 pps :: Point -> Point -> Point
 pps = zipWith (+)
 
---| dot-product of two points
+-- | dot-product of two points
 dot' :: Point -> Point -> Double
 dot' a b = sum $ zipWith (*) a b
 
---| dot-product with self
+-- | dot-product with self
 sqp :: Point -> Double
 sqp x = x `dot'` x
 
---| Main data type
+-- | Main data type
 data Simplex = Simplex{
   sPoints   :: [Point]            -- Vertices of simplex
 , sFunc     :: Point -> Double    -- Function to optimise
@@ -72,23 +72,23 @@ initSimplex s@(Simplex {..}) = s{
     (sPoints',sResults') = unzip xfx
     xc = centralPoint $ tail sPoints'
 
---| reflect the point in respect to the central one
+-- | reflect the point in respect to the central one
 reflect :: Double -> Point -> Point -> Point
 reflect a c x = ((1 + a) `spm` c) `pps` ((-a) `spm` x)
 
---| extend the point in respect to the central one
+-- | extend the point in respect to the central one
 extend :: Double -> Point -> Point -> Point
 extend g c x = ((1 - g) `spm` c) `pps` (g `spm` x) 
 
---| contract the point in respect to the central one
+-- | contract the point in respect to the central one
 contract :: Double -> Point -> Point -> Point
 contract b c x = (b `spm` x) `pps` ((1 - b) `spm` c)
 
---| calculate the central point (average)
+-- | calculate the central point (average)
 centralPoint :: [Point] -> Point
 centralPoint p = (foldl pps [0,0..] p) `psd` (fromIntegral $ length p)
 
---| shrink the whole simplex
+-- | shrink the whole simplex
 shrink :: [Point] -> Point -> [Point]
 shrink ps c = (\p -> (p `pps` c) `psd` 2.0) <$> ps
 
@@ -104,10 +104,10 @@ data FminOpts = FminOpts{
 instance Default FminOpts where
   def = FminOpts 1.0 0.5 2 0.00001 1000 10000
 
-fminsearch :: FminOpts                  --| minimisation options
-              -> ([Double] -> Double)   --| function to minimize
-              -> [Double]               --| initial point
-              -> IO ((Point,Double))    --| (best point, best value)
+fminsearch :: FminOpts                  -- | minimisation options
+              -> ([Double] -> Double)   -- | function to minimize
+              -> [Double]               -- | initial point
+              -> IO ((Point,Double))    -- | (best point, best value)
 fminsearch FminOpts{..} f p0 = do
   p <- getSimplexPoints oScale p0
   print p
@@ -115,14 +115,14 @@ fminsearch FminOpts{..} f p0 = do
   let res = validate oMaxn $ initSimplex s
   return $ best res
 
---| Place the x among g,b,u. e.g: g < x < b < u => 1
+-- | Place the x among g,b,u. e.g: g < x < b < u => 1
 placeAt :: Double -> GBU -> Int
 placeAt x (g,b,u) = trace ("x:"
     ++ show x
     ++ "\tgbu=" ++ show (g,b,u)) $ foldl (\a e -> if (x < e) then a else a + 1) 0 y'
   where y' = snd <$> [g,b,u]
 
---| generate n+1 simplex vertices from n-dimension 
+-- | generate n+1 simplex vertices from n-dimension 
 getSimplexPoints :: Double -> [Double] -> IO [[Double]]
 getSimplexPoints scale p = do
   (x::[Double])  <- getRandoms
@@ -136,7 +136,7 @@ getSimplexPoints scale p = do
         else take i a ++ [d'] ++ drop (i+1) a
       where d' = d + a!!i 
 
---| Run one step of the search 
+-- | Run one step of the search 
 stepSearch :: Simplex -> Simplex
 stepSearch s0@(Simplex{..}) = 
   case cs of
@@ -171,7 +171,7 @@ stepSearch s0@(Simplex{..}) =
     fe  = sFunc xe
     cs  = placeAt fr sGBU
 
---| 
+-- | 
 squezze :: Simplex -> Simplex
 squezze s@(Simplex{..}) = 
   if fs < (snd u)
@@ -188,7 +188,7 @@ squezze s@(Simplex{..}) =
     xs = contract sBetha sCentral $ fst u
     fs = sFunc xs
 
---| covariance
+-- | covariance
 cov ::[Point] -> Double
 cov x = trace ("ex=" ++ show ex ++ "\t ex2=" ++ show ex2)  ex2 - ex
   where

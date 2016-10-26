@@ -25,6 +25,7 @@ library
                      , hmatrix
                      , MonadRandom
                      , data-default-class
+                     , hmatrix-gsl
   default-language:    Haskell2010
 
 executable bmt16-exe
@@ -38,6 +39,10 @@ executable bmt16-exe
                      , vector
                      , hmatrix
                      , data-default-class
+                     , hmatrix-gsl
+                     , repa
+                     , hmatrix-repa
+                     , repa-io
   default-language:    Haskell2010
 
 test-suite bmt16-test
